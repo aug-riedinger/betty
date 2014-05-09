@@ -2,11 +2,14 @@
 require 'logger'
 
 $URL = 'https://github.com/pickhardt/betty'
-$VERSION = '0.1.4'
+$VERSION = '0.2.0'
 $executors = []
+$web_executors = []
 $LOG = Logger.new(File.open(ENV['HOME'] + '/.betty_history', 'a+'))
 
 Dir[File.dirname(__FILE__) + '/lib/*.rb'].each {|file| require file }
+
+require File.dirname(__FILE__) + '/processor.rb'
 
 BettyConfig.initialize
 
@@ -40,9 +43,10 @@ def get_input_y_n
   end
 end
 
-def interpret(command)
+def interpret(command, options = {})
   responses = []
-  $executors.each do |executor|
+  executors = options[:search_the_web] ? $web_executors : $executors
+  executors.each do |executor|
     executors_responses = executor.interpret(command)
     responses = responses.concat(executors_responses)
     if executors_responses.length == 1 and executors_responses[0][:command] 
@@ -52,7 +56,11 @@ def interpret(command)
   responses
 end
 
-def run(response)  
+def run(response)
+  if response[:already_executed]
+    return
+  end
+
   if response[:call_before]
     response[:call_before].call
   end
@@ -108,22 +116,21 @@ def speak(text)
 end
 
 def say(phrase, options={})
-  my_name = BettyConfig.get("name")
-  puts "#{ options[:no_name] ? '' : my_name + ': ' }#{ phrase }"
+  OutputProcessor.send(options[:processor]||:default, phrase, options)
   if BettyConfig.get("speech")
     speak(phrase)
   end
 end
 
-def main(commands)
-  command = commands.join(' ')
-  responses = interpret(command)
-  
+def handle_responses(responses)
   if responses.length == 1
     response = responses[0]
-    if response[:ask_first]
+    if response[:already_executed]
+      say "I found this '#{ responses[0][:command] }'"
+      say responses[0][:explanation], :no_name => true, :processor => response[:processor]
+    elsif response[:ask_first]
       say "I found the command '#{ responses[0][:command] }'"
-      say "       #{ responses[0][:explanation] }", :no_name => true
+      say responses[0][:explanation], :no_name => true, :processor => response[:processor]
       say "Do you want me to run this? Y/n"
       if get_input_y_n
         run(response)
@@ -136,13 +143,21 @@ def main(commands)
     say "Enter the number of the command you want me to run, or N (no) if you don't want me to run any."
     responses.each_with_index do |response, index|
       say "[#{ index + 1 }] #{ response[:command] }", :no_name => true
-      say("    #{ response[:explanation] }", :no_name => true) if response[:explanation]
+      say(response[:explanation], :no_name => true, :processor => response[:processor]) if response[:explanation]
     end
     which_to_run = get_input_integer(1, responses.length, :allow_no => true)
     run(responses[which_to_run - 1]) if which_to_run
   else
-    say "Sorry, I don't understand."
+    say "Sorry, I don't understand.\n"
   end
+end
+
+def main(commands)
+
+  command = commands.join(' ')
+  responses = interpret(command)
+  responses = interpret(command, :search_the_web => true) if responses.length == 0
+  handle_responses(responses)
 end
 
 main(ARGV)

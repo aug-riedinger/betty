@@ -150,6 +150,27 @@ The following is a non-exhaustive list of things you can do:
     betty who else is logged in
     betty whats my version of ruby
 
+    Stackoverflow
+    betty <type your google search to stackoverflow here>
+
+Stackoverflow
+-------------
+
+You can automate the following process with Betty: 
+
+1. Search in Google a technical question (Google is good at natural language processing!)
+2. Fetch and display the first Stackoverflow result
+
+Unfortunately, due to API restrictions, an API Key needs to be activated. To get one, here are the steps:
+1. Go to [the Google Console](https://console.developers.google.com/project)
+2. Create a project
+3. Activate [Google Custom Search](https://console.developers.google.com/project/apps~<PROJECT_ID>/apiui/api)
+4. Go to [Credentials](https://console.developers.google.com/project/apps~<PROJECT_ID>/apiui/credential)
+5. Click on `CREATE NEW KEY` button and get your API Key
+6. Execute `cp config.rb.example config.rb` and add your API key there : `vim config.rb`.
+
+All set
+
 Contributing
 ------------
 
